@@ -226,11 +226,13 @@ public class TestExtractText {
     @Test
     public void testMatchOutsideBuffer() throws Exception {
         final TestRunner testRunner = TestRunners.newTestRunner(new ExtractText());
+        // Matches all regex in the input even if they lie out
 
-        testRunner.setProperty(ExtractText.MAX_BUFFER_SIZE, "3 B");//only read the first 3 chars ("foo")
+        testRunner.setProperty(ExtractText.MAX_BUFFER_SIZE, "3 B");  // reads the input stream 3 bytes at a time
 
         testRunner.setProperty("regex.result1", "(foo)");
         testRunner.setProperty("regex.result2", "(world)");
+        testRunner.setProperty("regex.result3", "(bar)");
 
         testRunner.enqueue(SAMPLE_STRING.getBytes("UTF-8"));
         testRunner.run();
@@ -239,7 +241,8 @@ public class TestExtractText {
         final MockFlowFile out = testRunner.getFlowFilesForRelationship(ExtractText.REL_MATCH).get(0);
 
         out.assertAttributeEquals("regex.result1", "foo");
-        out.assertAttributeEquals("regex.result2", null); // null because outsk
+        out.assertAttributeEquals("regex.result2", "world");
+        out.assertAttributeEquals("regex.result3", "bar");
     }
 
     @Test

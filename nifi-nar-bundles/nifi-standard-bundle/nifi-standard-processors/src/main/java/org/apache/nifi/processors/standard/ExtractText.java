@@ -331,26 +331,11 @@ public class ExtractText extends AbstractProcessor {
         final Charset charset = Charset.forName(context.getProperty(CHARACTER_SET).getValue());
         final int maxCaptureGroupLength = context.getProperty(MAX_CAPTURE_GROUP_LENGTH).asInteger();
 
-        final String contentString;
+
         byte[] buffer = bufferQueue.poll();
         if (buffer == null) {
             final int maxBufferSize = context.getProperty(MAX_BUFFER_SIZE).asDataSize(DataUnit.B).intValue();
             buffer = new byte[maxBufferSize];
-        }
-
-        try {
-            final byte[] byteBuffer = buffer;
-            session.read(flowFile, new InputStreamCallback() {
-                @Override
-                public void process(InputStream in) throws IOException {
-                    StreamUtils.fillBuffer(in, byteBuffer, false);
-                }
-            });
-
-            final long len = Math.min(byteBuffer.length, flowFile.getSize());
-            contentString = new String(byteBuffer, 0, (int) len, charset);
-        } finally {
-            bufferQueue.offer(buffer);
         }
 
         final Map<String, String> regexResults = new HashMap<>();
@@ -358,34 +343,62 @@ public class ExtractText extends AbstractProcessor {
         final Map<String, Pattern> patternMap = compiledPattersMapRef.get();
 
         final int startGroupIdx = context.getProperty(INCLUDE_CAPTURE_GROUP_ZERO).asBoolean() ? 0 : 1;
+        final long flowfileLen = flowFile.getSize();
+        try {
+            final byte[] byteBuffer = buffer;
+            session.read(flowFile, new InputStreamCallback() {
+                @Override
+                public void process(InputStream in) throws IOException {
+                    String prevTail = "";
+                    while(StreamUtils.fillBuffer(in, byteBuffer, false) > 0) {
 
-        for (final Map.Entry<String, Pattern> entry : patternMap.entrySet()) {
+                        final long len = Math.min(byteBuffer.length, flowfileLen);
 
-            final Matcher matcher = entry.getValue().matcher(contentString);
-            int j = 0;
+                        // The match may straddle two iterations, so we need to include part of the previous iteration's
+                        // content in this iteration
+                        final String contentString = new StringBuilder(prevTail)
+                                .append(new String(byteBuffer, 0, (int) len, charset)).toString();
 
-            while (matcher.find()) {
-                final String baseKey = entry.getKey();
-                int start = j == 0 ? startGroupIdx : 1;
-                for (int i = start; i <= matcher.groupCount(); i++) {
-                    final String key = new StringBuilder(baseKey).append(".").append(i + j).toString();
-                    String value = matcher.group(i);
-                    if (value != null && !value.isEmpty()) {
-                        if (value.length() > maxCaptureGroupLength) {
-                            value = value.substring(0, maxCaptureGroupLength);
-                        }
-                        regexResults.put(key, value);
-                        if (i == 1 && j == 0) {
-                            regexResults.put(baseKey, value);
+                        // For the case the maxCaptureGroupLength is larger than the maxBufferLength
+                        int tailStart = Math.max(contentString.length() - maxCaptureGroupLength, 0);
+                        prevTail = contentString.substring(tailStart);
+
+                        for (final Map.Entry<String, Pattern> entry : patternMap.entrySet()) {
+
+                            final Matcher matcher = entry.getValue().matcher(contentString);
+                            int j = 0;
+
+                            while (matcher.find()) {
+                                final String baseKey = entry.getKey();
+                                int start = j == 0 ? startGroupIdx : 1;
+                                for (int i = start; i <= matcher.groupCount(); i++) {
+                                    final String key = new StringBuilder(baseKey).append(".").append(i + j).toString();
+                                    String value = matcher.group(i);
+                                    if (value != null && !value.isEmpty()) {
+                                        if (value.length() > maxCaptureGroupLength) {
+                                            value = value.substring(0, maxCaptureGroupLength);
+                                        }
+                                        regexResults.put(key, value);
+                                        if (i == 1 && j == 0) {
+                                            regexResults.put(baseKey, value);
+                                        }
+                                    }
+                                }
+                                j += matcher.groupCount();
+                                if (!context.getProperty(ENABLE_REPEATING_CAPTURE_GROUP).asBoolean()) {
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
-                j += matcher.groupCount();
-                if (!context.getProperty(ENABLE_REPEATING_CAPTURE_GROUP).asBoolean()) {
-                    break;
-                }
-            }
+            });
+
+
+        } finally {
+            bufferQueue.offer(buffer);
         }
+
 
         if (!regexResults.isEmpty()) {
             flowFile = session.putAllAttributes(flowFile, regexResults);
