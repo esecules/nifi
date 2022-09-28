@@ -1086,7 +1086,7 @@ public class TestMergeContent {
         final MockFlowFile assembled = runner.getFlowFilesForRelationship(MergeContent.REL_MERGED).get(0);
         assembled.assertContentEquals("A Man A Plan A Canal Panama".getBytes("UTF-8"));
     }
-    
+
     @Test
     public void testDefragmentWithOneBin() throws IOException {
         final TestRunner runner = TestRunners.newTestRunner(new MergeContent());
