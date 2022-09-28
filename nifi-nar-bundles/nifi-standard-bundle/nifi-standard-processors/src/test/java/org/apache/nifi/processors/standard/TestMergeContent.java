@@ -1086,6 +1086,42 @@ public class TestMergeContent {
         final MockFlowFile assembled = runner.getFlowFilesForRelationship(MergeContent.REL_MERGED).get(0);
         assembled.assertContentEquals("A Man A Plan A Canal Panama".getBytes("UTF-8"));
     }
+    
+    @Test
+    public void testDefragmentWithOneBin() throws IOException {
+        final TestRunner runner = TestRunners.newTestRunner(new MergeContent());
+        runner.setProperty(MergeContent.MERGE_STRATEGY, MergeContent.MERGE_STRATEGY_DEFRAGMENT);
+        runner.setProperty(MergeContent.MAX_BIN_AGE, "1 min");
+        runner.setProperty(MergeContent.MAX_BIN_COUNT, "1");
+
+        final Map<String, String> attributes = new HashMap<>();
+        attributes.put(MergeContent.FRAGMENT_ID_ATTRIBUTE, "1");
+        attributes.put(MergeContent.FRAGMENT_COUNT_ATTRIBUTE, "4");
+        attributes.put(MergeContent.FRAGMENT_INDEX_ATTRIBUTE, "1");
+
+        final Map<String, String> attributes2 = new HashMap<>();
+        attributes2.put(MergeContent.FRAGMENT_ID_ATTRIBUTE, "2");
+        attributes2.put(MergeContent.FRAGMENT_COUNT_ATTRIBUTE, "1");
+        attributes2.put(MergeContent.FRAGMENT_INDEX_ATTRIBUTE, "1");
+
+        runner.enqueue("A Man ".getBytes("UTF-8"), attributes);
+        attributes.put(MergeContent.FRAGMENT_INDEX_ATTRIBUTE, "2");
+        runner.enqueue("A Plan ".getBytes("UTF-8"), attributes);
+        runner.enqueue("My hovercraft is full of eels".getBytes("UTF-8"), attributes2);
+        attributes.put(MergeContent.FRAGMENT_INDEX_ATTRIBUTE, "3");
+        runner.enqueue("A Canal ".getBytes("UTF-8"), attributes);
+        attributes.put(MergeContent.FRAGMENT_INDEX_ATTRIBUTE, "4");
+        runner.enqueue("Panama".getBytes("UTF-8"), attributes);
+
+        runner.run();
+
+        runner.assertTransferCount(MergeContent.REL_MERGED, 2);
+        final MockFlowFile assembled = runner.getFlowFilesForRelationship(MergeContent.REL_MERGED).get(0);
+        assembled.assertContentEquals("My hovercraft is full of eels".getBytes("UTF-8"));
+
+        final MockFlowFile assembled2 = runner.getFlowFilesForRelationship(MergeContent.REL_MERGED).get(1);
+        assembled.assertContentEquals("A Man A Plan A Canal Panama".getBytes("UTF-8"));
+    }
 
     @Test
     public void testMergeBasedOnCorrelation() throws IOException, InterruptedException {
