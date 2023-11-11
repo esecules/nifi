@@ -303,6 +303,8 @@ public class PrometheusMetricsUtil {
         jvmMetricsRegistry.setDataPoint(jvmMetrics.heapUsed(DataUnit.B), "JVM_HEAP_USED", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.heapUsage(), "JVM_HEAP_USAGE", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.nonHeapUsage(), "JVM_HEAP_NON_USAGE", instanceId);
+        jvmMetricsRegistry.setDataPoint(jvmMetrics.totalUsed(), "JVM_MEMORY_TOTAL_USED", instanceId);
+        jvmMetricsRegistry.setDataPoint(jvmMetrics.totalCommitted(), "JVM_MEMORY_TOTAL_COMMIITTED", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.threadCount(), "JVM_THREAD_COUNT", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.daemonThreadCount(), "JVM_DAEMON_THREAD_COUNT", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.uptime(), "JVM_UPTIME", instanceId);
