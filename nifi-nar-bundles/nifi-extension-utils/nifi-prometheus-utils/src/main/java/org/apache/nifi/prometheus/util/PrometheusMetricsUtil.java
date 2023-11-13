@@ -33,7 +33,9 @@ import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.util.StringUtils;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class PrometheusMetricsUtil {
@@ -300,8 +302,11 @@ public class PrometheusMetricsUtil {
     public static CollectorRegistry createJvmMetrics(JvmMetricsRegistry jvmMetricsRegistry, JvmMetrics jvmMetrics, String instId) {
         final String instanceId = StringUtils.isEmpty(instId) ? DEFAULT_LABEL_STRING : instId;
         jvmMetricsRegistry.setDataPoint(jvmMetrics.heapUsed(DataUnit.B), "JVM_HEAP_USED", instanceId);
+        jvmMetricsRegistry.setDataPoint(jvmMetrics.heapCommitted(DataUnit.B), "JVM_HEAP_COMMITTED", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.heapUsage(), "JVM_HEAP_USAGE", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.nonHeapUsage(), "JVM_HEAP_NON_USAGE", instanceId);
+        jvmMetricsRegistry.setDataPoint(jvmMetrics.nonHeapUsed(DataUnit.B), "JVM_NON_HEAP_USED", instanceId);
+        jvmMetricsRegistry.setDataPoint(jvmMetrics.nonHeapCommitted(DataUnit.B), "JVM_NON_HEAP_COMMITTED", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.threadCount(), "JVM_THREAD_COUNT", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.daemonThreadCount(), "JVM_DAEMON_THREAD_COUNT", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.uptime(), "JVM_UPTIME", instanceId);
