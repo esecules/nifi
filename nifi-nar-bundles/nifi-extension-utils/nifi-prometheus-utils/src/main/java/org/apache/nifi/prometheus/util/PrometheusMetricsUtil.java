@@ -309,7 +309,14 @@ public class PrometheusMetricsUtil {
         jvmMetricsRegistry.setDataPoint(jvmMetrics.daemonThreadCount(), "JVM_DAEMON_THREAD_COUNT", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.uptime(), "JVM_UPTIME", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.fileDescriptorUsage(), "JVM_FILE_DESCRIPTOR_USAGE", instanceId);
-
+        jvmMetrics.memoryPoolUsed(DataUnit.B)
+                .forEach((name, stat) -> {
+                    jvmMetricsRegistry.setDataPoint(stat, "JVM_MEMORY_POOL_USED", instanceId, name);
+                });
+        jvmMetrics.memoryPoolUsage()
+                .forEach((name, stat) -> {
+                    jvmMetricsRegistry.setDataPoint(stat, "JVM_MEMORY_POOL_USAGE", instanceId, name);
+                });
         jvmMetrics.garbageCollectors()
                 .forEach((name, stat) -> {
                     jvmMetricsRegistry.setDataPoint(stat.getRuns(), "JVM_GC_RUNS", instanceId, name);

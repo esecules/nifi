@@ -157,6 +157,16 @@ public interface JvmMetrics {
      */
     Map<String, Double> memoryPoolUsage();
 
+
+    /**
+     * Returns a map of memory pool names to the amount of memory used in that pool.
+     *
+     * @param dataUnit The {@link DataUnit} to which the metric will be converted
+     *
+     * @return a map of memory pool names to the amount of memory used of that pool.
+     */
+    Map<String, Double> memoryPoolUsed(DataUnit dataUnit);
+
     /**
      * Returns the percentage of available file descriptors which are currently in use.
      *

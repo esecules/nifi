@@ -61,6 +61,18 @@ public class JvmMetricsRegistry extends AbstractMetricsRegistry {
                 .labelNames("instance")
                 .register(registry));
 
+        nameToGaugeMap.put("JVM_MEMORY_POOL_USED", Gauge.build()
+                .name("nifi_jvm_memory_pool_used")
+                .help("NiFi JVM memory bytes used per memory pool")
+                .labelNames("instance", "pool")
+                .register(registry));
+
+        nameToGaugeMap.put("JVM_MEMORY_POOL_USAGE", Gauge.build()
+                .name("nifi_jvm_memory_pool_usage")
+                .help("NiFi JVM memory percent used of each memory pool")
+                .labelNames("instance", "pool")
+                .register(registry));
+
         nameToGaugeMap.put("JVM_THREAD_COUNT", Gauge.build()
                 .name("nifi_jvm_thread_count")
                 .help("NiFi JVM thread count")

@@ -184,6 +184,18 @@ public class JmxJvmMetrics implements JvmMetrics {
     }
 
     @Override
+    public Map<String, Double> memoryPoolUsed(DataUnit dataUnit) {
+        Set<String> poolNames = getMetricNames(MEMORY_POOLS);
+        Map<String, Double> memoryPoolUsage = new HashMap<>();
+        for (String poolName : poolNames) {
+            double used = (dataUnit == null ? DataUnit.B : dataUnit).convert( (Long) getMetric(MEMORY_POOLS + "." + poolName + ".used"), DataUnit.B);
+            String sanitizedName = poolName.replace("'", "");
+            memoryPoolUsage.put(sanitizedName, used);
+        }
+        return Collections.unmodifiableMap(memoryPoolUsage);
+    }
+
+    @Override
     public double fileDescriptorUsage() {
         return (Double) getMetric(OS_FILEDESCRIPTOR_USAGE);
     }
