@@ -18,11 +18,7 @@ package org.apache.nifi.metrics.jvm;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
-import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
-import com.codahale.metrics.jvm.JvmAttributeGaugeSet;
-import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
-import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
+import com.codahale.metrics.jvm.*;
 import org.apache.nifi.processor.DataUnit;
 
 import java.io.OutputStream;
@@ -34,6 +30,7 @@ import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.lang.management.ManagementFactory;
 
 public class JmxJvmMetrics implements JvmMetrics {
 
@@ -42,6 +39,7 @@ public class JmxJvmMetrics implements JvmMetrics {
     public static final String MEMORY_POOLS = REGISTRY_METRICSET_MEMORY + ".pools";
     static final String REGISTRY_METRICSET_THREADS = "threads";
     static final String REGISTRY_METRICSET_GARBAGE_COLLECTORS = "garbage-collectors";
+    static final String REGISTRY_METRICSET_BUFFER_POOL = "buffer-pool";
     static final String JVM_ATTRIBUTES_NAME = REGISTRY_METRICSET_JVM_ATTRIBUTES + ".name";
     static final String JVM_ATTRIBUTES_UPTIME = REGISTRY_METRICSET_JVM_ATTRIBUTES + ".uptime";
     static final String JVM_ATTRIBUTES_VENDOR = REGISTRY_METRICSET_JVM_ATTRIBUTES + ".vendor";
@@ -77,7 +75,7 @@ public class JmxJvmMetrics implements JvmMetrics {
             metricRegistry.get().register(REGISTRY_METRICSET_THREADS, new ThreadStatesGaugeSet());
             metricRegistry.get().register(REGISTRY_METRICSET_GARBAGE_COLLECTORS, new GarbageCollectorMetricSet());
             metricRegistry.get().register(OS_FILEDESCRIPTOR_USAGE, new FileDescriptorRatioGauge());
-
+            metricRegistry.get().register(REGISTRY_METRICSET_BUFFER_POOL, new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
         }
         return new JmxJvmMetrics();
     }
@@ -260,6 +258,15 @@ public class JmxJvmMetrics implements JvmMetrics {
 
     @Override
     public Map<String, BufferPoolStats> getBufferPoolStats() {
-        throw new UnsupportedOperationException("This operation has not yet been implemented");
+        final String[] names = {"count", "used", "capacity"};
+        final String[] pools = {"direct", "mapped"};
+        HashMap<String, BufferPoolStats> bufferStats = new HashMap<>();
+        for(String pool: pools) {
+                long count = (Long) getMetric(REGISTRY_METRICSET_BUFFER_POOL + "." + pool + ".count");
+                long used = (Long) getMetric(REGISTRY_METRICSET_BUFFER_POOL + "." + pool + ".used");
+                long capacity = (Long) getMetric(REGISTRY_METRICSET_BUFFER_POOL + "." + pool + ".capacity");
+                bufferStats.put(pool, new BufferPoolStats(count, used, capacity));
+        }
+        return bufferStats;
     }
 }

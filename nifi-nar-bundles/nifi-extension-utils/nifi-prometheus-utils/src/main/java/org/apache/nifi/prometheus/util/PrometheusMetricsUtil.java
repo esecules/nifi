@@ -297,7 +297,7 @@ public class PrometheusMetricsUtil {
         return nifiMetricsRegistry.getRegistry();
     }
 
-    public static CollectorRegistry createJvmMetrics(JvmMetricsRegistry jvmMetricsRegistry, JvmMetrics jvmMetrics, String instId) {
+    public static CollectorRegistry createJvmMetrics(final JvmMetricsRegistry jvmMetricsRegistry, JvmMetrics jvmMetrics, final String instId) {
         final String instanceId = StringUtils.isEmpty(instId) ? DEFAULT_LABEL_STRING : instId;
         jvmMetricsRegistry.setDataPoint(jvmMetrics.heapUsed(DataUnit.B), "JVM_HEAP_USED", instanceId);
         jvmMetricsRegistry.setDataPoint(jvmMetrics.heapCommitted(DataUnit.B), "JVM_HEAP_COMMITTED", instanceId);
@@ -321,6 +321,12 @@ public class PrometheusMetricsUtil {
                 .forEach((name, stat) -> {
                     jvmMetricsRegistry.setDataPoint(stat.getRuns(), "JVM_GC_RUNS", instanceId, name);
                     jvmMetricsRegistry.setDataPoint(stat.getTime(TimeUnit.MILLISECONDS), "JVM_GC_TIME", instanceId, name);
+                });
+        jvmMetrics.getBufferPoolStats()
+                .forEach((name, stat) -> {
+                    jvmMetricsRegistry.setDataPoint(stat.getCount(), "JVM_BUFFER_POOL_COUNT", instanceId, name);
+                    jvmMetricsRegistry.setDataPoint(stat.getMemoryUsed(DataUnit.B), "JVM_BUFFER_POOL_USED", instanceId, name);
+                    jvmMetricsRegistry.setDataPoint(stat.getTotalCapacity(DataUnit.B), "JVM_BUFFER_POOL_CAPACITY", instanceId, name);
                 });
 
         return jvmMetricsRegistry.getRegistry();

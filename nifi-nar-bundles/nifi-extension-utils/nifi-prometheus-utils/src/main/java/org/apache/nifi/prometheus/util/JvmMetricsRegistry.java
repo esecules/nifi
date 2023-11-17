@@ -108,6 +108,27 @@ public class JvmMetricsRegistry extends AbstractMetricsRegistry {
                 .help("NiFi JVM GC time in milliseconds")
                 .labelNames("instance", "gc_name")
                 .register(registry));
+
+        nameToGaugeMap.put("JVM_BUFFER_POOL_COUNT", Gauge.build()
+                .name("jvm_buffer_pool_count")
+                .help("Count of items in jvm buffer pool")
+                .labelNames("instance", "pool_name")
+                .register(registry)
+        );
+
+        nameToGaugeMap.put("JVM_BUFFER_POOL_USED", Gauge.build()
+                .name("jvm_buffer_pool_used")
+                .help("Total size in bytes of items in jvm buffer pool")
+                .labelNames("instance", "pool_name")
+                .register(registry)
+        );
+
+        nameToGaugeMap.put("JVM_BUFFER_POOL_CAPACITY", Gauge.build()
+                .name("jvm_buffer_pool_capacity")
+                .help("Capacity in bytes of the jvm buffer pool")
+                .labelNames("instance", "pool_name")
+                .register(registry)
+        );
     }
 
 }
