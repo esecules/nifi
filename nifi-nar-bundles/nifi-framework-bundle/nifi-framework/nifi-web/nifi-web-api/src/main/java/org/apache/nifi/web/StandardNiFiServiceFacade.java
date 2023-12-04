@@ -6093,8 +6093,6 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         nifiMetricsRegistry.setDataPoint(taskDuration, "TOTAL_TASK_DURATION",
                 instanceId, ROOT_PROCESS_GROUP, rootPGName, rootPGId, "");
 
-        PrometheusMetricsUtil.createJvmMetrics(jvmMetricsRegistry, JmxJvmMetrics.getInstance(), instanceId);
-
         final Map<String, Double> aggregatedMetrics = new HashMap<>();
         PrometheusMetricsUtil.aggregatePercentUsed(rootPGStatus, aggregatedMetrics);
         PrometheusMetricsUtil.createAggregatedNifiMetrics(nifiMetricsRegistry, aggregatedMetrics, instanceId,ROOT_PROCESS_GROUP, rootPGName, rootPGId);

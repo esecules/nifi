@@ -18,6 +18,7 @@
 package org.apache.nifi.reporting.prometheus;
 
 import io.prometheus.client.CollectorRegistry;
+import io.prometheus.client.hotspot.DefaultExports;
 import org.apache.nifi.annotation.configuration.DefaultSchedule;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
@@ -27,7 +28,6 @@ import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.controller.status.ProcessGroupStatus;
-import org.apache.nifi.metrics.jvm.JmxJvmMetrics;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.prometheus.util.JvmMetricsRegistry;
 import org.apache.nifi.prometheus.util.NiFiMetricsRegistry;
@@ -158,9 +158,8 @@ public class PrometheusReportingTask extends AbstractReportingTask {
             metricsCollectors.add(nifiMetrics);
             if (context.getProperty(SEND_JVM_METRICS).asBoolean()) {
                 Function<ReportingContext, CollectorRegistry> jvmMetrics = (reportingContext) -> {
-                    String instanceId = reportingContext.getProperty(PrometheusMetricsUtil.INSTANCE_ID).evaluateAttributeExpressions().getValue();
                     JvmMetricsRegistry jvmMetricsRegistry = new JvmMetricsRegistry();
-                    return PrometheusMetricsUtil.createJvmMetrics(jvmMetricsRegistry, JmxJvmMetrics.getInstance(), instanceId);
+                    return jvmMetricsRegistry.getRegistry();
                 };
                 metricsCollectors.add(jvmMetrics);
             }

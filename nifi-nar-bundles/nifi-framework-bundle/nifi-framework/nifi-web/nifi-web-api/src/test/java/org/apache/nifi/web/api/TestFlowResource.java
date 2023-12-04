@@ -32,7 +32,6 @@ import org.apache.nifi.prometheus.util.ClusterMetricsRegistry;
 import org.apache.nifi.prometheus.util.ConnectionAnalyticsMetricsRegistry;
 import org.apache.nifi.prometheus.util.JvmMetricsRegistry;
 import org.apache.nifi.prometheus.util.NiFiMetricsRegistry;
-import org.apache.nifi.prometheus.util.PrometheusMetricsUtil;
 import org.apache.nifi.web.NiFiServiceFacade;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.request.FlowMetricsProducer;
@@ -72,14 +71,12 @@ import static org.mockito.Mockito.when;
 public class TestFlowResource {
     private static final String LABEL_VALUE = TestFlowResource.class.getSimpleName();
     private static final String OTHER_LABEL_VALUE = JmxJvmMetrics.class.getSimpleName();
-    private static final String THREAD_COUNT_NAME = "nifi_jvm_thread_count";
-    private static final String HEAP_USAGE_NAME = "nifi_jvm_heap_usage";
-    private static final String HEAP_USED_NAME = "nifi_jvm_heap_used";
-    private static final String HEAP_STARTS_WITH_PATTERN = "nifi_jvm_heap.*";
-    private static final String THREAD_COUNT_LABEL = String.format("nifi_jvm_thread_count{instance=\"%s\"", LABEL_VALUE);
-    private static final String THREAD_COUNT_OTHER_LABEL = String.format("nifi_jvm_thread_count{instance=\"%s\"", OTHER_LABEL_VALUE);
+    private static final String THREAD_COUNT_NAME = "jvm_threads";
+    private static final String MEMORY_POOL_NAME = "jvm_memory_pool_bytes_used";
+    private static final String BUFFER_POOL_NAME = "jvm_buffer_pool_used_bytes";
+    private static final String MEMORY_STARTS_WITH_PATTERN = "jvm_memory.*";
     private static final String ROOT_FIELD_NAME = "beans";
-    private static final String SAMPLE_NAME_JVM = ".*jvm.*";
+    private static final String SAMPLE_NAME_JVM = "jvm.*";
     private static final String SAMPLE_LABEL_VALUES_ROOT_PROCESS_GROUP = "RootProcessGroup";
     private static final String SAMPLE_LABEL_VALUES_PROCESS_GROUP = "ProcessGroup";
     private static final String COMPONENT_TYPE_LABEL = "component_type";
@@ -111,7 +108,7 @@ public class TestFlowResource {
         final String output = getResponseOutput(response);
 
         assertTrue(output.contains(THREAD_COUNT_NAME), "Thread Count name not found");
-        assertTrue(output.contains(HEAP_USAGE_NAME), "Heap Usage name not found");
+        assertTrue(output.contains(MEMORY_POOL_NAME), "Heap Usage name not found");
     }
 
     @Test
@@ -127,7 +124,7 @@ public class TestFlowResource {
         final String output = getResponseOutput(response);
 
         assertTrue(output.contains(THREAD_COUNT_NAME), "Thread Count name not found");
-        assertFalse(output.contains(HEAP_USAGE_NAME), "Heap Usage name not filtered");
+        assertFalse(output.contains(MEMORY_POOL_NAME), "Heap Usage name not filtered");
     }
 
     @Test
@@ -135,15 +132,15 @@ public class TestFlowResource {
         final List<CollectorRegistry> registries = getCollectorRegistries();
         when(serviceFacade.generateFlowMetrics(anySet())).thenReturn(registries);
 
-        final Response response = resource.getFlowMetrics(FlowMetricsProducer.PROMETHEUS.getProducer(), Collections.emptySet(), HEAP_STARTS_WITH_PATTERN, null, null);
+        final Response response = resource.getFlowMetrics(FlowMetricsProducer.PROMETHEUS.getProducer(), Collections.emptySet(), MEMORY_STARTS_WITH_PATTERN, null, null);
 
         assertNotNull(response);
         assertEquals(MediaType.valueOf(TextFormat.CONTENT_TYPE_004), response.getMediaType());
 
         final String output = getResponseOutput(response);
 
-        assertTrue(output.contains(HEAP_USAGE_NAME), "Heap Usage name not found");
-        assertTrue(output.contains(HEAP_USED_NAME), "Heap Used name not found");
+        assertTrue(output.contains(MEMORY_POOL_NAME), "Heap Usage name not found");
+        assertTrue(output.contains(BUFFER_POOL_NAME), "Heap Used name not found");
         assertFalse(output.contains(THREAD_COUNT_NAME), "Heap Usage name not filtered");
     }
 
@@ -176,9 +173,7 @@ public class TestFlowResource {
         final String output = getResponseOutput(response);
 
         assertTrue(output.contains(THREAD_COUNT_NAME), "Thread Count name not found");
-        assertTrue(output.contains(THREAD_COUNT_LABEL), "Thread Count with label not found");
-        assertTrue(output.contains(THREAD_COUNT_OTHER_LABEL), "Thread Count with other label not found");
-        assertTrue(output.contains(HEAP_USAGE_NAME), "Heap Usage name not found");
+        assertTrue(output.contains(MEMORY_POOL_NAME), "Heap Usage name not found");
     }
 
     @Test
@@ -230,7 +225,7 @@ public class TestFlowResource {
         final List<CollectorRegistry> registries = getCollectorRegistriesForJson();
         when(serviceFacade.generateFlowMetrics(anySet())).thenReturn(registries);
 
-        final Response response = resource.getFlowMetrics(FlowMetricsProducer.JSON.getProducer(), Collections.emptySet(), HEAP_STARTS_WITH_PATTERN, null, ROOT_FIELD_NAME);
+        final Response response = resource.getFlowMetrics(FlowMetricsProducer.JSON.getProducer(), Collections.emptySet(), MEMORY_STARTS_WITH_PATTERN, null, ROOT_FIELD_NAME);
         assertNotNull(response);
         assertEquals(MediaType.valueOf(MediaType.APPLICATION_JSON), response.getMediaType());
 
@@ -296,8 +291,8 @@ public class TestFlowResource {
 
     private List<CollectorRegistry> getCollectorRegistries() {
         final JvmMetricsRegistry jvmMetricsRegistry = new JvmMetricsRegistry();
-        final CollectorRegistry jvmCollectorRegistry = PrometheusMetricsUtil.createJvmMetrics(jvmMetricsRegistry, JmxJvmMetrics.getInstance(), LABEL_VALUE);
-        final CollectorRegistry otherJvmCollectorRegistry = PrometheusMetricsUtil.createJvmMetrics(jvmMetricsRegistry, JmxJvmMetrics.getInstance(), OTHER_LABEL_VALUE);
+        final CollectorRegistry jvmCollectorRegistry = jvmMetricsRegistry.getRegistry();
+        final CollectorRegistry otherJvmCollectorRegistry = jvmMetricsRegistry.getRegistry();
         return Arrays.asList(jvmCollectorRegistry, otherJvmCollectorRegistry);
     }
 

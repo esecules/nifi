@@ -20,21 +20,13 @@ package org.apache.nifi.prometheus.util;
 import io.prometheus.client.CollectorRegistry;
 import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.controller.status.ConnectionStatus;
-import org.apache.nifi.controller.status.PortStatus;
-import org.apache.nifi.controller.status.ProcessGroupStatus;
-import org.apache.nifi.controller.status.ProcessorStatus;
-import org.apache.nifi.controller.status.RemoteProcessGroupStatus;
-import org.apache.nifi.controller.status.TransmissionStatus;
+import org.apache.nifi.controller.status.*;
 import org.apache.nifi.controller.status.analytics.StatusAnalytics;
 import org.apache.nifi.expression.ExpressionLanguageScope;
-import org.apache.nifi.metrics.jvm.JvmMetrics;
-import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.util.StringUtils;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class PrometheusMetricsUtil {
 
@@ -295,57 +287,6 @@ public class PrometheusMetricsUtil {
         }
 
         return nifiMetricsRegistry.getRegistry();
-    }
-
-    public static CollectorRegistry createJvmMetrics(final JvmMetricsRegistry jvmMetricsRegistry, JvmMetrics jvmMetrics, final String instId) {
-        final String instanceId = StringUtils.isEmpty(instId) ? DEFAULT_LABEL_STRING : instId;
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.heapUsed(DataUnit.B), "JVM_HEAP_USED", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.heapCommitted(DataUnit.B), "JVM_HEAP_COMMITTED", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.heapUsage(), "JVM_HEAP_USAGE", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.nonHeapUsage(), "JVM_NON_HEAP_USAGE", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.nonHeapUsed(DataUnit.B), "JVM_NON_HEAP_USED", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.nonHeapCommitted(DataUnit.B), "JVM_NON_HEAP_COMMITTED", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.threadCount(), "JVM_THREAD_COUNT", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.daemonThreadCount(), "JVM_DAEMON_THREAD_COUNT", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.uptime(), "JVM_UPTIME", instanceId);
-        jvmMetricsRegistry.setDataPoint(jvmMetrics.fileDescriptorUsage(), "JVM_FILE_DESCRIPTOR_USAGE", instanceId);
-        jvmMetrics.memoryPoolInit(DataUnit.B)
-                .forEach((name, stat) -> {
-                    jvmMetricsRegistry.setDataPoint(stat, "JVM_MEMORY_POOL_INIT", instanceId, name);
-                });
-        jvmMetrics.memoryPoolUsed(DataUnit.B)
-                .forEach((name, stat) -> {
-                    jvmMetricsRegistry.setDataPoint(stat, "JVM_MEMORY_POOL_USED", instanceId, name);
-                });
-        jvmMetrics.memoryPoolCommitted(DataUnit.B)
-                .forEach((name, stat) -> {
-                    jvmMetricsRegistry.setDataPoint(stat, "JVM_MEMORY_POOL_COMMITTED", instanceId, name);
-                });
-        jvmMetrics.memoryPoolMax(DataUnit.B)
-                .forEach((name, stat) -> {
-                    jvmMetricsRegistry.setDataPoint(stat, "JVM_MEMORY_POOL_MAX", instanceId, name);
-                });
-        jvmMetrics.memoryPoolMemoryUsedAfterGC(DataUnit.B)
-                .forEach((name, stat) -> {
-                    jvmMetricsRegistry.setDataPoint(stat, "JVM_MEMORY_POOL_USED_AFTER_GC", instanceId, name);
-                });
-        jvmMetrics.memoryPoolUsage()
-                .forEach((name, stat) -> {
-                    jvmMetricsRegistry.setDataPoint(stat, "JVM_MEMORY_POOL_USAGE", instanceId, name);
-                });
-        jvmMetrics.garbageCollectors()
-                .forEach((name, stat) -> {
-                    jvmMetricsRegistry.setDataPoint(stat.getRuns(), "JVM_GC_RUNS", instanceId, name);
-                    jvmMetricsRegistry.setDataPoint(stat.getTime(TimeUnit.MILLISECONDS), "JVM_GC_TIME", instanceId, name);
-                });
-        jvmMetrics.getBufferPoolStats()
-                .forEach((name, stat) -> {
-                    jvmMetricsRegistry.setDataPoint(stat.getCount(), "JVM_BUFFER_POOL_COUNT", instanceId, name);
-                    jvmMetricsRegistry.setDataPoint(stat.getMemoryUsed(DataUnit.B), "JVM_BUFFER_POOL_USED", instanceId, name);
-                    jvmMetricsRegistry.setDataPoint(stat.getTotalCapacity(DataUnit.B), "JVM_BUFFER_POOL_CAPACITY", instanceId, name);
-                });
-
-        return jvmMetricsRegistry.getRegistry();
     }
 
     public static CollectorRegistry createConnectionStatusAnalyticsMetrics(final ConnectionAnalyticsMetricsRegistry connectionAnalyticsMetricsRegistry, final StatusAnalytics statusAnalytics,
