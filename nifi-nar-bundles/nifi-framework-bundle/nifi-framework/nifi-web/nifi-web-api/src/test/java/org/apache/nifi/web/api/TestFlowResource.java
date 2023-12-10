@@ -26,7 +26,6 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.prometheus.client.Collector.MetricFamilySamples.Sample;
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.exporter.common.TextFormat;
-import org.apache.nifi.metrics.jvm.JmxJvmMetrics;
 import org.apache.nifi.prometheus.util.BulletinMetricsRegistry;
 import org.apache.nifi.prometheus.util.ClusterMetricsRegistry;
 import org.apache.nifi.prometheus.util.ConnectionAnalyticsMetricsRegistry;
@@ -69,12 +68,14 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class TestFlowResource {
-    private static final String LABEL_VALUE = TestFlowResource.class.getSimpleName();
-    private static final String OTHER_LABEL_VALUE = JmxJvmMetrics.class.getSimpleName();
-    private static final String THREAD_COUNT_NAME = "jvm_threads";
+    private static final String RUNNING_THREAD_LABEL_VALUE = "RUNNING";
+    private static final String HEAP_LABEL_VALUE = "heap";
+    private static final String THREAD_COUNT_NAME = "jvm_threads_current";
+    private static final String GC_NAME = "jvm_gc_collection_seconds_sum";
     private static final String MEMORY_POOL_NAME = "jvm_memory_pool_bytes_used";
+    private static final String MEMORY_NAME = "jvm_memory_bytes_used";
     private static final String BUFFER_POOL_NAME = "jvm_buffer_pool_used_bytes";
-    private static final String MEMORY_STARTS_WITH_PATTERN = "jvm_memory.*";
+    private static final String MEMORY_STARTS_WITH_PATTERN = "jvm_(memory|buffer).*";
     private static final String ROOT_FIELD_NAME = "beans";
     private static final String SAMPLE_NAME_JVM = "jvm.*";
     private static final String SAMPLE_LABEL_VALUES_ROOT_PROCESS_GROUP = "RootProcessGroup";
@@ -149,15 +150,15 @@ public class TestFlowResource {
         final List<CollectorRegistry> registries = getCollectorRegistries();
         when(serviceFacade.generateFlowMetrics(anySet())).thenReturn(registries);
 
-        final Response response = resource.getFlowMetrics(FlowMetricsProducer.PROMETHEUS.getProducer(), Collections.emptySet(), null, LABEL_VALUE, null);
+        final Response response = resource.getFlowMetrics(FlowMetricsProducer.PROMETHEUS.getProducer(), Collections.emptySet(), null, HEAP_LABEL_VALUE, null);
 
         assertNotNull(response);
         assertEquals(MediaType.valueOf(TextFormat.CONTENT_TYPE_004), response.getMediaType());
 
         final String output = getResponseOutput(response);
 
-        assertTrue(output.contains(LABEL_VALUE), "Label Value not found");
-        assertFalse(output.contains(OTHER_LABEL_VALUE), "Other Label Value not filtered");
+        assertTrue(output.contains(HEAP_LABEL_VALUE), "Label Value not found");
+        assertFalse(output.contains(RUNNING_THREAD_LABEL_VALUE), "Other Label Value not filtered");
     }
 
     @Test
@@ -165,7 +166,7 @@ public class TestFlowResource {
         final List<CollectorRegistry> registries = getCollectorRegistries();
         when(serviceFacade.generateFlowMetrics(anySet())).thenReturn(registries);
 
-        final Response response = resource.getFlowMetrics(FlowMetricsProducer.PROMETHEUS.getProducer(), Collections.emptySet(), THREAD_COUNT_NAME, LABEL_VALUE, null);
+        final Response response = resource.getFlowMetrics(FlowMetricsProducer.PROMETHEUS.getProducer(), Collections.emptySet(), THREAD_COUNT_NAME, HEAP_LABEL_VALUE, null);
 
         assertNotNull(response);
         assertEquals(MediaType.valueOf(TextFormat.CONTENT_TYPE_004), response.getMediaType());
@@ -173,7 +174,7 @@ public class TestFlowResource {
         final String output = getResponseOutput(response);
 
         assertTrue(output.contains(THREAD_COUNT_NAME), "Thread Count name not found");
-        assertTrue(output.contains(MEMORY_POOL_NAME), "Heap Usage name not found");
+        assertTrue(output.contains(MEMORY_NAME), "Memory pool name not found");
     }
 
     @Test
@@ -191,10 +192,10 @@ public class TestFlowResource {
         assertThat(metrics, hasKey(ROOT_FIELD_NAME));
 
         final List<Sample> registryList = metrics.get(ROOT_FIELD_NAME);
-        assertThat(registryList, hasSize(13));
+        assertThat(registryList, hasSize(101));
 
         final Map<String, Long> result = getResult(registryList);
-        assertThat(3L, equalTo(result.get(SAMPLE_NAME_JVM)));
+        assertThat(91L, equalTo(result.get(SAMPLE_NAME_JVM)));
         assertThat(4L, equalTo(result.get(SAMPLE_LABEL_VALUES_PROCESS_GROUP)));
         assertThat(2L, equalTo(result.get(SAMPLE_LABEL_VALUES_ROOT_PROCESS_GROUP)));
         assertThat(4L, equalTo(result.get(CLUSTER_LABEL_KEY)));
@@ -214,10 +215,10 @@ public class TestFlowResource {
         assertThat(metrics, hasKey(ROOT_FIELD_NAME));
 
         final List<Sample> registryList = metrics.get(ROOT_FIELD_NAME);
-        assertThat(registryList, hasSize(3));
+        assertThat(registryList, hasSize(85));
 
         final Map<String, Long> result = getResult(registryList);
-        assertThat(3L, equalTo(result.get(SAMPLE_NAME_JVM)));
+        assertThat(85L, equalTo(result.get(SAMPLE_NAME_JVM)));
     }
 
     @Test
@@ -234,10 +235,10 @@ public class TestFlowResource {
         assertThat(metrics, hasKey(ROOT_FIELD_NAME));
 
         final List<Sample> registryList = metrics.get(ROOT_FIELD_NAME);
-        assertThat(registryList, hasSize(2));
+        assertThat(registryList, hasSize(78));
 
         final Map<String, Long> result = getResult(registryList);
-        assertThat(2L, equalTo(result.get(SAMPLE_NAME_JVM)));
+        assertThat(78L, equalTo(result.get(SAMPLE_NAME_JVM)));
     }
 
     @Test
@@ -274,10 +275,10 @@ public class TestFlowResource {
         assertThat(metrics, hasKey(ROOT_FIELD_NAME));
 
         final List<Sample> registryList = metrics.get(ROOT_FIELD_NAME);
-        assertThat(registryList, hasSize(5));
+        assertThat(registryList, hasSize(87));
 
         final Map<String, Long> result = getResult(registryList);
-        assertThat(3L, equalTo(result.get(SAMPLE_NAME_JVM)));
+        assertThat(85L, equalTo(result.get(SAMPLE_NAME_JVM)));
         assertThat(2L, equalTo(result.get(SAMPLE_LABEL_VALUES_ROOT_PROCESS_GROUP)));
     }
 
@@ -365,11 +366,6 @@ public class TestFlowResource {
 
     private static CollectorRegistry getJvmMetricsRegistry() {
         final JvmMetricsRegistry jvmMetricsRegistry = new JvmMetricsRegistry();
-
-        jvmMetricsRegistry.setDataPoint(4.0, "JVM_HEAP_USED", "instanceId");
-        jvmMetricsRegistry.setDataPoint(6.0, "JVM_HEAP_USAGE", "instanceId");
-        jvmMetricsRegistry.setDataPoint(10.0, "JVM_THREAD_COUNT", "instanceId");
-
         return jvmMetricsRegistry.getRegistry();
     }
 

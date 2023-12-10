@@ -22,5 +22,4 @@ public class JvmMetricsRegistry extends AbstractMetricsRegistry {
     public JvmMetricsRegistry() {
         DefaultExports.register(registry);
     }
-
 }
