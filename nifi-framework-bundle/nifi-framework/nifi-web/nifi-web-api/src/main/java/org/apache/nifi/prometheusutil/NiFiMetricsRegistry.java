@@ -275,5 +275,35 @@ public class NiFiMetricsRegistry extends AbstractMetricsRegistry {
                 .help("Provenance repository free space in bytes")
                 .labelNames("instance", "component_type", "component_name", "component_id", "parent_id", "repo_identifier")
                 .register(registry));
+
+        nameToGaugeMap.put("PROCESSING_PERF_CPU_NANOS", Gauge.build()
+                .name("nifi_processing_cpu_duration")
+                .help("Estimated cpu time (nanos) used by this component")
+                .labelNames("instance", "component_type", "component_name", "component_id", "parent_id", "repo_identifier")
+                .register(registry));
+
+        nameToGaugeMap.put("PROCESSING_PERF_GC_MILLIS", Gauge.build()
+                .name("nifi_processing_gc_duration")
+                .help("Estimated gc time (millis) used by this component")
+                .labelNames("instance", "component_type", "component_name", "component_id", "parent_id", "repo_identifier")
+                .register(registry));
+
+        nameToGaugeMap.put("PROCESSING_PERF_READ_NANOS", Gauge.build()
+                .name("nifi_processing_content_read_duration")
+                .help("Estimated content read time (nanos) used by this component")
+                .labelNames("instance", "component_type", "component_name", "component_id", "parent_id", "repo_identifier")
+                .register(registry));
+
+        nameToGaugeMap.put("PROCESSING_PERF_WRITE_NANOS", Gauge.build()
+                .name("nifi_processing_content_write_duration")
+                .help("Estimated content write time (nanos) used by this component")
+                .labelNames("instance", "component_type", "component_name", "component_id", "parent_id", "repo_identifier")
+                .register(registry));
+
+        nameToGaugeMap.put("PROCESSING_PERF_COMMIT_NANOS", Gauge.build()
+                .name("nifi_processing_session_commit_duration")
+                .help("Estimated session commit time (nanos) used by this component")
+                .labelNames("instance", "component_type", "component_name", "component_id", "parent_id", "repo_identifier")
+                .register(registry));
     }
 }
