@@ -573,8 +573,8 @@ public class FlowResource extends ApplicationResource {
             )
             @PathParam("producer") final String producer,
             @Parameter(
-                    description = "Set of included metrics registries. " +
-                            "Allowed values: [NIFI, JVM, BULLETIN, CONNECTION, CLUSTER] "
+                    description = "Set of included metrics registries. Duplicate the parameter to include multiple registries. " +
+                            "Allowed values: [NIFI, JVM, BULLETIN, CONNECTION, CLUSTER] default: all"
             )
             @QueryParam("includedRegistries") final Set<FlowMetricsRegistry> includedRegistries,
             @Parameter(
