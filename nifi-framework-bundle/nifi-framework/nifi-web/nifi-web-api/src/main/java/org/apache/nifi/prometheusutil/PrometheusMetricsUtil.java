@@ -522,19 +522,20 @@ public class PrometheusMetricsUtil {
     private static void addProcessingPerformanceMetrics(final NiFiMetricsRegistry niFiMetricsRegistry, final ProcessingPerformanceStatus perfStatus, final String instanceId,
                                                         final String componentType, final String componentName, final String componentId, final String parentId) {
         if (perfStatus != null) {
-            niFiMetricsRegistry.setDataPoint(perfStatus.getCpuDuration(), "PROCESSING_PERF_CPU_NANOS",
+            niFiMetricsRegistry.setDataPoint(perfStatus.getCpuDuration() / 1000.0, "PROCESSING_PERF_CPU_MILLIS",
                     instanceId, componentType, componentName, componentId, parentId, perfStatus.getIdentifier());
 
+            // Base metric already in milliseconds
             niFiMetricsRegistry.setDataPoint(perfStatus.getGarbageCollectionDuration(), "PROCESSING_PERF_GC_MILLIS",
                     instanceId, componentType, componentName, componentId, parentId, perfStatus.getIdentifier());
 
-            niFiMetricsRegistry.setDataPoint(perfStatus.getContentReadDuration(), "PROCESSING_PERF_READ_NANOS",
+            niFiMetricsRegistry.setDataPoint(perfStatus.getContentReadDuration() / 1000.0, "PROCESSING_PERF_READ_MILLIS",
                     instanceId, componentType, componentName, componentId, parentId, perfStatus.getIdentifier());
 
-            niFiMetricsRegistry.setDataPoint(perfStatus.getContentWriteDuration(), "PROCESSING_PERF_WRITE_NANOS",
+            niFiMetricsRegistry.setDataPoint(perfStatus.getContentWriteDuration() / 1000.0, "PROCESSING_PERF_WRITE_MILLIS",
                     instanceId, componentType, componentName, componentId, parentId, perfStatus.getIdentifier());
 
-            niFiMetricsRegistry.setDataPoint(perfStatus.getSessionCommitDuration(), "PROCESSING_PERF_COMMIT_NANOS",
+            niFiMetricsRegistry.setDataPoint(perfStatus.getSessionCommitDuration() / 1000.0, "PROCESSING_PERF_COMMIT_MILLIS",
                     instanceId, componentType, componentName, componentId, parentId, perfStatus.getIdentifier());
         }
     }
