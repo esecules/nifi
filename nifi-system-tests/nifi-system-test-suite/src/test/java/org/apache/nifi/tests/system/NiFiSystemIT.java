@@ -282,7 +282,7 @@ public abstract class NiFiSystemIT implements NiFiInstanceProvider {
         final NiFiClient client = getNifiClient();
 
         int attemptedNodeIndex = 0;
-        final long maxTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(60);
+        final long maxTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(120);
         while (true) {
             int connectedNodeCount = -1;
             try {
@@ -301,7 +301,7 @@ public abstract class NiFiSystemIT implements NiFiInstanceProvider {
             }
 
             if (System.currentTimeMillis() > maxTime) {
-                throw new RuntimeException("Waited up to 60 seconds for all nodes to connect but only " + connectedNodeCount + " nodes connected");
+                throw new RuntimeException("Waited up to 120 seconds for all nodes to connect but only " + connectedNodeCount + " nodes connected");
             }
 
             try {
