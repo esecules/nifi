@@ -275,5 +275,10 @@ public class NiFiMetricsRegistry extends AbstractMetricsRegistry {
                 .help("Provenance repository free space in bytes")
                 .labelNames("instance", "component_type", "component_name", "component_id", "parent_id", "repo_identifier")
                 .register(registry));
+
+        nameToGaugeMap.put("COMPONENT_RUNNING_COUNT", Gauge.build().name("nifi_component_running_count")
+                .help("Count of components running")
+                .labelNames("instance", "component_type", "component_name", "component_id", "parent_id", "repo_identifier")
+                .register(registry));
     }
 }

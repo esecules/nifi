@@ -586,7 +586,12 @@ public class FlowResource extends ApplicationResource {
             @Parameter(
                     description = "Name of the first field of JSON object. Applicable for JSON producer only."
             )
-            @QueryParam("rootFieldName") final String rootFieldName
+            @QueryParam("rootFieldName") final String rootFieldName,
+            @Parameter(
+                    description = "Omit metrics except for nifi_component_running_count for idle components. " +
+                            "default: false"
+            )
+            @QueryParam("ignoreIdleComponents") boolean ignoreIdleComponents
     ) {
 
         authorizeFlow();

@@ -6604,8 +6604,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         final String instanceId = node == null ? instId : node.getId();
         ProcessGroupStatus rootPGStatus = controllerFacade.getProcessGroupStatus("root");
 
-        PrometheusMetricsUtil.createNifiMetrics(nifiMetricsRegistry, rootPGStatus, instanceId, "", ROOT_PROCESS_GROUP,
-                PrometheusMetricsUtil.METRICS_STRATEGY_COMPONENTS.getValue());
+        PrometheusMetricsUtil.createNifiMetrics(nifiMetricsRegistry, rootPGStatus, instanceId, "", ROOT_PROCESS_GROUP);
 
         // Add the total byte counts (read/written) to the NiFi metrics registry
         FlowFileEventRepository flowFileEventRepository = controllerFacade.getFlowFileEventRepository();
