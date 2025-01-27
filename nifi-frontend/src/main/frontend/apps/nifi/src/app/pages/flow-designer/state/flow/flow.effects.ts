@@ -91,7 +91,7 @@ import {
     selectVersionSaving
 } from './flow.selectors';
 import { ConnectionManager } from '../../service/manager/connection-manager.service';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { CreatePort } from '../../ui/canvas/items/port/create-port/create-port.component';
 import { EditPort } from '../../ui/canvas/items/port/edit-port/edit-port.component';
 import {
@@ -119,7 +119,7 @@ import { OkDialog } from '../../../../ui/common/ok-dialog/ok-dialog.component';
 import { GroupComponents } from '../../ui/canvas/items/process-group/group-components/group-components.component';
 import { EditProcessGroup } from '../../ui/canvas/items/process-group/edit-process-group/edit-process-group.component';
 import { ControllerServiceService } from '../../service/controller-service.service';
-import { YesNoDialog } from '../../../../ui/common/yes-no-dialog/yes-no-dialog.component';
+import { YesNoDialog } from '@nifi/shared';
 import { PropertyTableHelperService } from '../../../../service/property-table-helper.service';
 import { ParameterHelperService } from '../../service/parameter-helper.service';
 import { RegistryService } from '../../service/registry.service';
@@ -127,14 +127,6 @@ import { ImportFromRegistry } from '../../ui/canvas/items/flow/import-from-regis
 import { selectCurrentUser } from '../../../../state/current-user/current-user.selectors';
 import { NoRegistryClientsDialog } from '../../ui/common/no-registry-clients-dialog/no-registry-clients-dialog.component';
 import { EditRemoteProcessGroup } from '../../ui/canvas/items/remote-process-group/edit-remote-process-group/edit-remote-process-group.component';
-import {
-    ComponentType,
-    isDefinedAndNotNull,
-    LARGE_DIALOG,
-    MEDIUM_DIALOG,
-    SMALL_DIALOG,
-    XL_DIALOG
-} from 'libs/shared/src';
 import { HttpErrorResponse } from '@angular/common/http';
 import { SaveVersionDialog } from '../../ui/canvas/items/flow/save-version-dialog/save-version-dialog.component';
 import { ChangeVersionDialog } from '../../ui/canvas/items/flow/change-version-dialog/change-version-dialog';
@@ -159,7 +151,16 @@ import {
 } from '../../../../state/property-verification/property-verification.selectors';
 import { VerifyPropertiesRequestContext } from '../../../../state/property-verification';
 import { BackNavigation } from '../../../../state/navigation';
-import { NiFiCommon, Storage } from '@nifi/shared';
+import {
+    ComponentType,
+    isDefinedAndNotNull,
+    LARGE_DIALOG,
+    MEDIUM_DIALOG,
+    SMALL_DIALOG,
+    XL_DIALOG,
+    NiFiCommon,
+    Storage
+} from '@nifi/shared';
 import { resetPollingFlowAnalysis } from '../flow-analysis/flow-analysis.actions';
 import { selectDocumentVisibilityState } from '../../../../state/document-visibility/document-visibility.selectors';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -175,9 +176,13 @@ import {
 import { CopyPasteService } from '../../service/copy-paste.service';
 import { selectCopiedContent } from '../../../../state/copy/copy.selectors';
 import { CopyRequestContext, CopyResponseContext } from '../../../../state/copy';
+import * as ParameterActions from '../parameter/parameter.actions';
+import { ParameterContextService } from '../../../parameter-contexts/service/parameter-contexts.service';
 
 @Injectable()
 export class FlowEffects {
+    private createProcessGroupDialogRef: MatDialogRef<CreateProcessGroup, any> | undefined;
+    private editProcessGroupDialogRef: MatDialogRef<EditProcessGroup, any> | undefined;
     private destroyRef = inject(DestroyRef);
     private lastReload: number = 0;
 
@@ -199,6 +204,7 @@ export class FlowEffects {
         private dialog: MatDialog,
         private propertyTableHelperService: PropertyTableHelperService,
         private parameterHelperService: ParameterHelperService,
+        private parameterContextService: ParameterContextService,
         private extensionTypesService: ExtensionTypesService,
         private errorHelper: ErrorHelper,
         private copyPasteService: CopyPasteService
@@ -323,7 +329,7 @@ export class FlowEffects {
                     case ComponentType.Processor:
                         return of(FlowActions.openNewProcessorDialog({ request }));
                     case ComponentType.ProcessGroup:
-                        return from(this.flowService.getParameterContexts()).pipe(
+                        return from(this.parameterContextService.getParameterContexts()).pipe(
                             concatLatestFrom(() => this.store.select(selectCurrentParameterContext)),
                             map(([response, parameterContext]) => {
                                 const dialogRequest: CreateProcessGroupDialogRequest = {
@@ -550,15 +556,20 @@ export class FlowEffects {
                 ofType(FlowActions.openNewProcessGroupDialog),
                 map((action) => action.request),
                 tap((request) => {
-                    this.dialog
-                        .open(CreateProcessGroup, {
-                            ...MEDIUM_DIALOG,
-                            data: request
-                        })
-                        .afterClosed()
-                        .subscribe(() => {
-                            this.store.dispatch(FlowActions.setDragging({ dragging: false }));
-                        });
+                    this.createProcessGroupDialogRef = this.dialog.open(CreateProcessGroup, {
+                        ...MEDIUM_DIALOG,
+                        data: request
+                    });
+
+                    this.createProcessGroupDialogRef.componentInstance.parameterContexts = request.parameterContexts;
+
+                    this.createProcessGroupDialogRef.afterClosed().subscribe(() => {
+                        if (this.createProcessGroupDialogRef !== undefined) {
+                            this.createProcessGroupDialogRef = undefined;
+                        }
+
+                        this.store.dispatch(FlowActions.setDragging({ dragging: false }));
+                    });
                 })
             ),
         { dispatch: false }
@@ -616,7 +627,7 @@ export class FlowEffects {
             map((action) => action.request),
             concatLatestFrom(() => this.store.select(selectCurrentProcessGroupId)),
             switchMap(([request]) =>
-                from(this.flowService.getParameterContexts()).pipe(
+                from(this.parameterContextService.getParameterContexts()).pipe(
                     concatLatestFrom(() => this.store.select(selectCurrentParameterContext)),
                     map(([response, parameterContext]) => {
                         const dialogRequest: GroupComponentsDialogRequest = {
@@ -1272,7 +1283,21 @@ export class FlowEffects {
                     case ComponentType.Connection:
                         return of(FlowActions.openEditConnectionDialog({ request }));
                     case ComponentType.ProcessGroup:
-                        return of(FlowActions.openEditProcessGroupDialog({ request }));
+                        return from(this.parameterContextService.getParameterContexts()).pipe(
+                            map((response) => {
+                                const editComponentDialogRequest = {
+                                    ...request,
+                                    parameterContexts: response.parameterContexts
+                                };
+
+                                return FlowActions.openEditProcessGroupDialog({
+                                    request: editComponentDialogRequest
+                                });
+                            }),
+                            catchError((errorResponse: HttpErrorResponse) =>
+                                of(this.snackBarOrFullScreenError(errorResponse))
+                            )
+                        );
                     case ComponentType.RemoteProcessGroup:
                         return of(FlowActions.openEditRemoteProcessGroupDialog({ request }));
                     case ComponentType.InputPort:
@@ -1291,20 +1316,28 @@ export class FlowEffects {
         this.actions$.pipe(
             ofType(FlowActions.editCurrentProcessGroup),
             map((action) => action.request),
-            switchMap((request) =>
-                from(this.flowService.getProcessGroup(request.id)).pipe(
-                    map((response) =>
-                        FlowActions.openEditProcessGroupDialog({
-                            request: {
-                                type: ComponentType.ProcessGroup,
-                                uri: response.uri,
-                                entity: response
-                            }
-                        })
+            switchMap((request) => {
+                return from(this.parameterContextService.getParameterContexts()).pipe(
+                    switchMap((parameterContextResponse) =>
+                        from(this.flowService.getProcessGroup(request.id)).pipe(
+                            map((response) =>
+                                FlowActions.openEditProcessGroupDialog({
+                                    request: {
+                                        type: ComponentType.ProcessGroup,
+                                        uri: response.uri,
+                                        entity: response,
+                                        parameterContexts: parameterContextResponse.parameterContexts
+                                    }
+                                })
+                            ),
+                            catchError((errorResponse: HttpErrorResponse) =>
+                                of(this.snackBarOrFullScreenError(errorResponse))
+                            )
+                        )
                     ),
                     catchError((errorResponse: HttpErrorResponse) => of(this.snackBarOrFullScreenError(errorResponse)))
-                )
-            )
+                );
+            })
         )
     );
 
@@ -1412,7 +1445,9 @@ export class FlowEffects {
                 ]),
                 switchMap(([request, parameterContextReference, processGroupId]) => {
                     if (parameterContextReference && parameterContextReference.permissions.canRead) {
-                        return from(this.flowService.getParameterContext(parameterContextReference.id)).pipe(
+                        return from(
+                            this.parameterContextService.getParameterContext(parameterContextReference.id)
+                        ).pipe(
                             map((parameterContext) => {
                                 return [request, parameterContext, processGroupId];
                             }),
@@ -1826,23 +1861,18 @@ export class FlowEffects {
                 ofType(FlowActions.openEditProcessGroupDialog),
                 map((action) => action.request),
                 concatLatestFrom(() => this.store.select(selectCurrentProcessGroupId)),
-                switchMap(([request, currentProcessGroupId]) =>
-                    this.flowService.getParameterContexts().pipe(
-                        take(1),
-                        map((response) => [request, response.parameterContexts, currentProcessGroupId])
-                    )
-                ),
-                tap(([request, parameterContexts, currentProcessGroupId]) => {
-                    const editDialogReference = this.dialog.open(EditProcessGroup, {
+                tap(([request, currentProcessGroupId]) => {
+                    this.editProcessGroupDialogRef = this.dialog.open(EditProcessGroup, {
                         ...LARGE_DIALOG,
                         data: request
                     });
 
-                    editDialogReference.componentInstance.saving$ = this.store.select(selectSaving);
-                    editDialogReference.componentInstance.parameterContexts = parameterContexts;
+                    this.editProcessGroupDialogRef.componentInstance.saving$ = this.store.select(selectSaving);
+                    this.editProcessGroupDialogRef.componentInstance.parameterContexts =
+                        request.parameterContexts || [];
 
-                    editDialogReference.componentInstance.editProcessGroup
-                        .pipe(takeUntil(editDialogReference.afterClosed()))
+                    this.editProcessGroupDialogRef.componentInstance.editProcessGroup
+                        .pipe(takeUntil(this.editProcessGroupDialogRef.afterClosed()))
                         .subscribe((payload: any) => {
                             this.store.dispatch(
                                 FlowActions.updateComponent({
@@ -1857,7 +1887,11 @@ export class FlowEffects {
                             );
                         });
 
-                    editDialogReference.afterClosed().subscribe(() => {
+                    this.editProcessGroupDialogRef.afterClosed().subscribe(() => {
+                        if (this.editProcessGroupDialogRef !== undefined) {
+                            this.editProcessGroupDialogRef = undefined;
+                        }
+
                         if (request.entity.id === currentProcessGroupId) {
                             this.store.dispatch(
                                 FlowActions.loadProcessGroup({
@@ -1885,6 +1919,65 @@ export class FlowEffects {
                             );
                         }
                     });
+                })
+            ),
+        { dispatch: false }
+    );
+
+    createParameterContextSuccess$ = createEffect(
+        () =>
+            this.actions$.pipe(
+                ofType(ParameterActions.createParameterContextSuccess),
+                tap((action) => {
+                    if (this.editProcessGroupDialogRef !== undefined) {
+                        // clone the current parameter contexts
+                        const parameterContexts = [
+                            ...(this.editProcessGroupDialogRef?.componentInstance.parameterContexts || [])
+                        ];
+
+                        // add newly created parameter context
+                        parameterContexts?.push(action.response.parameterContext);
+
+                        // remove all parameter contexts
+                        this.editProcessGroupDialogRef.componentInstance.parameterContexts = [];
+
+                        // set collection of parameter contexts to include the newly created parameter context
+                        this.editProcessGroupDialogRef.componentInstance.parameterContexts = parameterContexts || [];
+
+                        // auto select the newly created parameter context
+                        this.editProcessGroupDialogRef.componentInstance.editProcessGroupForm
+                            .get('parameterContext')
+                            ?.setValue(action.response.parameterContext.id);
+
+                        // mark the form as dirty
+                        this.editProcessGroupDialogRef.componentInstance.editProcessGroupForm
+                            .get('parameterContext')
+                            ?.markAsDirty();
+                    } else if (this.createProcessGroupDialogRef !== undefined) {
+                        // clone the current parameter contexts
+                        const parameterContexts = [
+                            ...(this.createProcessGroupDialogRef?.componentInstance.parameterContexts || [])
+                        ];
+
+                        // add newly created parameter context
+                        parameterContexts?.push(action.response.parameterContext);
+
+                        // remove all parameter contexts
+                        this.createProcessGroupDialogRef.componentInstance.parameterContexts = [];
+
+                        // set collection of parameter contexts to include the newly created parameter context
+                        this.createProcessGroupDialogRef.componentInstance.parameterContexts = parameterContexts || [];
+
+                        // auto select the newly created parameter context
+                        this.createProcessGroupDialogRef.componentInstance.createProcessGroupForm
+                            .get('newProcessGroupParameterContext')
+                            ?.setValue(action.response.parameterContext.id);
+
+                        // mark the form as dirty
+                        this.createProcessGroupDialogRef.componentInstance.createProcessGroupForm
+                            .get('newProcessGroupParameterContext')
+                            ?.markAsDirty();
+                    }
                 })
             ),
         { dispatch: false }

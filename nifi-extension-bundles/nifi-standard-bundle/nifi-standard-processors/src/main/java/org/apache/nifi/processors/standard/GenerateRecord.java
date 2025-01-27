@@ -59,7 +59,6 @@ import org.apache.nifi.serialization.record.type.MapDataType;
 import org.apache.nifi.serialization.record.type.RecordDataType;
 import org.apache.nifi.util.StringUtils;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -152,7 +151,7 @@ public class GenerateRecord extends AbstractProcessor {
             .required(false)
             .build();
 
-    private static final List<PropertyDescriptor> PROPERTIES = List.of(
+    private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = List.of(
             RECORD_WRITER,
             NUM_RECORDS,
             NULLABLE_FIELDS,
@@ -165,13 +164,15 @@ public class GenerateRecord extends AbstractProcessor {
             .description("FlowFiles that are successfully created will be routed to this relationship")
             .build();
 
-    static final Set<Relationship> RELATIONSHIPS = Set.of(REL_SUCCESS);
+    static final Set<Relationship> RELATIONSHIPS = Set.of(
+            REL_SUCCESS
+    );
 
     private volatile Faker faker = new Faker();
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return PROPERTIES;
+        return PROPERTY_DESCRIPTORS;
     }
 
     @Override
@@ -315,8 +316,7 @@ public class GenerateRecord extends AbstractProcessor {
                 return faker.number().randomDouble(6, Long.MIN_VALUE, Long.MAX_VALUE);
             case FLOAT:
                 final double randomDouble = faker.number().randomDouble(6, Long.MIN_VALUE, Long.MAX_VALUE);
-                final BigDecimal asBigDecimal = new BigDecimal(randomDouble);
-                return asBigDecimal.floatValue();
+                return (float) randomDouble;
             case DECIMAL:
                 return faker.number().randomDouble(((DecimalDataType) recordField.getDataType()).getScale(), Long.MIN_VALUE, Long.MAX_VALUE);
             case INT:
