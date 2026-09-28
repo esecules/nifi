@@ -28,6 +28,8 @@ import org.apache.nifi.connectable.ConnectableType;
 import org.apache.nifi.connectable.Connection;
 import org.apache.nifi.connectable.Position;
 import org.apache.nifi.controller.ControllerService;
+import org.apache.nifi.controller.ProcessorNode;
+import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.queue.FlowFileQueue;
 import org.apache.nifi.controller.queue.LoadBalanceCompression;
 import org.apache.nifi.controller.queue.LoadBalanceStrategy;
@@ -57,11 +59,16 @@ import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.registry.flow.FlowRegistryClientNode;
 import org.apache.nifi.registry.flow.diff.DifferenceType;
 import org.apache.nifi.registry.flow.diff.FlowDifference;
+import org.apache.nifi.reporting.Bulletin;
+import org.apache.nifi.util.MockBulletinRepository;
 import org.apache.nifi.web.ResourceNotFoundException;
+import org.apache.nifi.web.Revision;
 import org.apache.nifi.web.api.dto.flow.ProcessGroupFlowDTO;
 import org.apache.nifi.web.api.entity.AllowableValueEntity;
+import org.apache.nifi.web.api.entity.ComponentEntity;
 import org.apache.nifi.web.api.entity.ParameterContextReferenceEntity;
 import org.apache.nifi.web.revision.RevisionManager;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -785,7 +792,7 @@ public class DtoFactoryTest {
         final ParameterContextLookup lookup = mock(ParameterContextLookup.class);
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup);
+        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup, true);
 
         assertEquals("param-name", dto.getName());
         assertEquals("param-value", dto.getValue());
@@ -812,7 +819,7 @@ public class DtoFactoryTest {
         final ParameterContextLookup lookup = mock(ParameterContextLookup.class);
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup);
+        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup, true);
 
         assertFalse(dto.getInherited());
         assertEquals(contextId, dto.getParameterContext().getId());
@@ -837,7 +844,7 @@ public class DtoFactoryTest {
         final ParameterContextLookup lookup = mock(ParameterContextLookup.class);
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(childContext, parameter, mock(RevisionManager.class), lookup);
+        final ParameterDTO dto = dtoFactory.createParameterDto(childContext, parameter, mock(RevisionManager.class), lookup, true);
 
         assertTrue(dto.getInherited());
         assertEquals(parentId, dto.getParameterContext().getId());
@@ -864,7 +871,7 @@ public class DtoFactoryTest {
         final ParameterContextLookup lookup = mock(ParameterContextLookup.class);
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(childContext, parameter, mock(RevisionManager.class), lookup);
+        final ParameterDTO dto = dtoFactory.createParameterDto(childContext, parameter, mock(RevisionManager.class), lookup, true);
 
         assertTrue(dto.getInherited());
         assertEquals(grandparentId, dto.getParameterContext().getId());
@@ -891,7 +898,7 @@ public class DtoFactoryTest {
         when(lookup.getParameterContext(externalId)).thenReturn(externalContext);
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup);
+        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup, true);
 
         assertTrue(dto.getInherited());
         assertEquals(externalId, dto.getParameterContext().getId());
@@ -914,7 +921,7 @@ public class DtoFactoryTest {
                 .build();
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), ParameterContextLookup.EMPTY);
+        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), ParameterContextLookup.EMPTY, true);
 
         assertFalse(dto.getInherited());
         assertEquals(contextId, dto.getParameterContext().getId());
@@ -938,7 +945,7 @@ public class DtoFactoryTest {
         when(lookup.getParameterContext(missingSourceId)).thenThrow(new AssertionError("Lookup getter should not be called for a missing source context"));
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup);
+        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup, true);
 
         assertFalse(dto.getInherited());
         assertEquals(contextId, dto.getParameterContext().getId());
@@ -965,7 +972,7 @@ public class DtoFactoryTest {
         when(lookup.getParameterContext(missingSourceId)).thenThrow(new ResourceNotFoundException("Source context was removed"));
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup);
+        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), lookup, true);
 
         assertFalse(dto.getInherited());
         assertEquals(contextId, dto.getParameterContext().getId());
@@ -993,7 +1000,7 @@ public class DtoFactoryTest {
                 .build();
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(contextA, parameter, mock(RevisionManager.class), ParameterContextLookup.EMPTY);
+        final ParameterDTO dto = dtoFactory.createParameterDto(contextA, parameter, mock(RevisionManager.class), ParameterContextLookup.EMPTY, true);
 
         assertTrue(dto.getInherited());
         assertEquals(contextDId, dto.getParameterContext().getId());
@@ -1024,7 +1031,7 @@ public class DtoFactoryTest {
         when(lookup.getParameterContext(missingId)).thenReturn(fallbackContext);
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(childContext, parameter, mock(RevisionManager.class), lookup);
+        final ParameterDTO dto = dtoFactory.createParameterDto(childContext, parameter, mock(RevisionManager.class), lookup, true);
 
         assertTrue(dto.getInherited());
         assertEquals(missingId, dto.getParameterContext().getId());
@@ -1045,10 +1052,66 @@ public class DtoFactoryTest {
                 .build();
 
         final DtoFactory dtoFactory = newDtoFactoryForParameters();
-        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), mock(ParameterContextLookup.class));
+        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, mock(RevisionManager.class), mock(ParameterContextLookup.class), true);
 
         assertTrue(dto.getSensitive());
         assertEquals(DtoFactory.SENSITIVE_VALUE_MASK, dto.getValue());
+    }
+
+
+
+    @Test
+    void testCreateParameterDtoReferencesIncluded() {
+        final String processorId = "processor-1";
+        final String controllerId = "controller-1";
+
+        final ParameterDTO dto = getDtoForParameterWithReferences(processorId, controllerId, true);
+
+        Set<String> referencedIdSet = dto.getReferencingComponents().stream().map(ComponentEntity::getId).collect(Collectors.toSet());
+        assertEquals(Set.of(processorId, controllerId), referencedIdSet);
+    }
+
+    @Test
+    void testCreateParameterDtoReferencesExcluded() {
+        final String processorId = "processor-1";
+        final String controllerId = "controller-1";
+
+        final ParameterDTO dto = getDtoForParameterWithReferences(processorId, controllerId, false);
+
+        assertNull(dto.getReferencingComponents());
+    }
+
+    private static @NonNull ParameterDTO getDtoForParameterWithReferences(String processorId, String controllerId, boolean includeReferences) {
+        final String contextId = "context-1";
+        ProcessorNode referencingProcessor = mock(ProcessorNode.class);
+        when(referencingProcessor.getIdentifier()).thenReturn(processorId);
+        when(referencingProcessor.getDesiredState()).thenReturn(ScheduledState.RUNNING);
+        ControllerServiceNode referencingControllerService = mock(ControllerServiceNode.class);
+        when(referencingControllerService.getIdentifier()).thenReturn(controllerId);
+        when(referencingControllerService.getState()).thenReturn(ControllerServiceState.ENABLED);
+        RevisionManager revisionManager = mock(RevisionManager.class);
+        when(revisionManager.getRevision(eq(processorId))).thenReturn(new Revision(0L, "client-1", processorId));
+        when(revisionManager.getRevision(eq(controllerId))).thenReturn(new Revision(0L, "client-1", controllerId));
+
+        final ParameterContext parameterContext = createMockParameterContextWithRefs(contextId, "context-1-name",
+                Collections.emptyList(), Set.of(referencingControllerService), Set.of(referencingProcessor));
+
+        final Parameter parameter = new Parameter.Builder()
+                .name("my-param")
+                .value("my-value")
+                .sensitive(false)
+                .build();
+
+        final DtoFactory dtoFactory = newDtoFactoryForParameters();
+        dtoFactory.setBulletinRepository(new MockBulletinRepository() {
+            @Override
+            public List<Bulletin> findBulletinsForSource(String sourceId, String groupId) {
+                return List.of();
+            }
+        });
+
+        final ParameterDTO dto = dtoFactory.createParameterDto(parameterContext, parameter, revisionManager, mock(ParameterContextLookup.class), includeReferences);
+        return dto;
     }
 
     private static DtoFactory newDtoFactoryForParameters() {
@@ -1063,6 +1126,15 @@ public class DtoFactoryTest {
         when(context.getInheritedParameterContexts()).thenReturn(inherited);
         return context;
     }
+
+    private static ParameterContext createMockParameterContextWithRefs(final String id, final String name, final List<ParameterContext> inherited,
+                                                                       Set<ControllerServiceNode> controllerRefs, Set<ProcessorNode> processorRefs) {
+        final ParameterContext context = mock(ParameterContext.class);
+        configureBaseParameterContextWithRefs(context, id, name, controllerRefs, processorRefs);
+        when(context.getInheritedParameterContexts()).thenReturn(inherited);
+        return context;
+    }
+
 
     private static void configureBaseParameterContext(final ParameterContext context, final String id, final String name) {
         when(context.getIdentifier()).thenReturn(id);
@@ -1168,4 +1240,14 @@ public class DtoFactoryTest {
         return group;
     }
 
+    private static void configureBaseParameterContextWithRefs(final ParameterContext context, final String id, final String name,
+                                                              Set<ControllerServiceNode> controllerRefs, Set<ProcessorNode> processorRefs) {
+        when(context.getIdentifier()).thenReturn(id);
+        when(context.getName()).thenReturn(name);
+        ParameterReferenceManager parameterReferenceManager = mock(ParameterReferenceManager.class);
+        when(parameterReferenceManager.getProcessGroupsBound(any(ParameterContext.class))).thenReturn(Set.of());
+        when(parameterReferenceManager.getControllerServicesReferencing(any(ParameterContext.class), anyString())).thenReturn(controllerRefs);
+        when(parameterReferenceManager.getProcessorsReferencing(any(ParameterContext.class), anyString())).thenReturn(processorRefs);
+        when(context.getParameterReferenceManager()).thenReturn(parameterReferenceManager);
+    }
 }
